@@ -7,6 +7,7 @@ extern crate vm;
 use vm::cpu::Cpu;
 use vm::memory::Memory;
 use vm::instruction::*;
+use vm::register::Get;
 
 use std::collections::HashMap;
 
@@ -58,9 +59,9 @@ impl Machine {
                     7 => add16(Operand::Reg16(REG_HL), Operand::Reg16(REG_SP))
                 },
                 2 => map!{
-                    0 => ld_a2m(Operand::Reg16(REG_BC))
-                    2 => ld_a2m(Operand::Reg16(REG_DE))
-                    4 => ld_r2mi(Operand::Reg16(REG_HL))
+                    0 => ld_a2m(Operand::Reg16(REG_BC)),
+                    2 => ld_a2m(Operand::Reg16(REG_DE)),
+                    4 => ld_r2mi(Operand::Reg16(REG_HL)),
                     6 => ld_r2mi(Operand::Reg(REG_A))
                 },
                 6 => map!{
@@ -105,7 +106,7 @@ impl Machine {
     }
 
     fn load(&mut self, bytes: usize) -> Vec<u8> {
-        let ip = self.cpu.pc.expect("pc is empty");
+        let ip: u16 = self.cpu.pc.get();
         let res = self.im.load(ip, bytes);
         self.cpu.incr(bytes);
         res
@@ -178,7 +179,8 @@ impl Machine {
     pub fn run(&mut self) {
         loop {
             self.tick();
-            if self.cpu.pc.unwrap() == 10 || self.cpu.pc.unwrap() == ::std::u16::MAX {
+            let pc: u16 = self.cpu.pc.get();
+            if pc == 10 || pc == ::std::u16::MAX {
                 self.dump_cpu();
                 break;
             }

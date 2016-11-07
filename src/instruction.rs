@@ -47,7 +47,7 @@ pub struct Instruction {
 }
 
 impl Instruction {
-    pub fn exec(&self, cpu: &mut Cpu, args: Vec<u8>) {
+    pub fn exec(&self, mut cpu: &mut Cpu, args: Vec<u8>) {
         match self.op {
             Operation::Nop => {}
             Operation::Ld(ref lop, ref rop) => {
@@ -59,22 +59,15 @@ impl Instruction {
 
     fn load(&self, cpu: &mut Cpu, args: Vec<u8>) {
         let (left, right) = match self.op {
-            Operation::Ld(ref lop, ref rop) => (*lop, *rop),
+            Operation::Ld(ref lop, ref rop) => (lop.clone(), rop.clone()),
             _ => unreachable!(),
         };
         match (left, right) {
-            (Operand::Reg16(ref num), Immediate16) => {
+            (Operand::Reg16(ref num), ref Immediate16) => {
                 let val: u16 = ((args[1] as u16) << 8) | (args[0] as u16);
                 cpu.set16(*num, val);
             }
-            (Operand::Mem(ref reg), Operand::Reg(ref rnum)) => {
-                match reg {
-                    Operand::Reg16(ref lnum) => {
-                        let addr = cpu.get16(lnum);
-                    }
-                    _ => unreachable!(),
-                }
-            }
+            _ => unreachable!(),
         }
     }
 }

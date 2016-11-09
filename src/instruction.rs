@@ -65,7 +65,7 @@ impl Instruction {
         match (left, right) {
             (Operand::Reg16(ref num), ref Immediate16) => {
                 let val: u16 = ((args[1] as u16) << 8) | (args[0] as u16);
-                cpu.set16(*num, val);
+                // cpu.set16(*num, val);
             }
             _ => unreachable!(),
         }

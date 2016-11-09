@@ -1,83 +1,120 @@
+use std::rc::Rc;
 use std::cell::RefCell;
-#[derive(Debug)]
-pub struct Register {
-    value: Vec<u8>,
+
+pub enum RegisterClass {
+    Single(RegisterRef<u8>),
+    Double(RegisterRef<u16>),
+    Pair(RegisterPair),
 }
 
-#[derive(Debug)]
+pub type RegisterRef<T> = Rc<RefCell<Register<T>>>;
+
 pub struct RegisterPair {
-    high: RefCell<Register>,
-    low: RefCell<Register>,
+    high: RegisterRef<u8>,
+    low: RegisterRef<u8>,
 }
 
-impl Default for Register {
+impl RegisterPair {
+    pub fn new(high: RegisterRef<u8>, low: RegisterRef<u8>) -> Self {
+        RegisterPair {
+            high: high,
+            low: low,
+        }
+    }
+}
+
+pub trait ByteContainer {
+    type W;
+    fn get(&self) -> Self::W;
+    fn set(&mut self, v: Self::W);
+}
+
+#[derive(Debug,Clone)]
+pub struct Register<T> {
+    value: T,
+}
+
+impl<T: Default> Default for Register<T> {
     fn default() -> Self {
-        Register { value: vec![] }
+        Register { value: T::default() }
     }
 }
 
-pub trait Get<T> {
-    fn get(&self) -> T;
-}
-
-impl Get<u8> for Register {
-    fn get(&self) -> u8 {
-        if self.value.is_empty() {
-            0
-        } else {
-            self.value[0]
-        }
+impl<T> Register<T> {
+    pub fn new(v: T) -> Self {
+        Register { value: v }
     }
 }
 
-impl Get<u16> for Register {
-    fn get(&self) -> u16 {
-        if self.value.len() < 2 {
-            0
-        } else {
-            ((self.value[1] as u16) << 8) | self.value[0] as u16
-        }
+impl ByteContainer for Register<u8> {
+    type W = u8;
+    fn get(&self) -> Self::W {
+        self.value
+    }
+    fn set(&mut self, v: Self::W) {
+        self.value = v;
+    }
+}
+
+impl ByteContainer for Register<u16> {
+    type W = u16;
+    fn get(&self) -> Self::W {
+        self.value
+    }
+    fn set(&mut self, v: Self::W) {
+        self.value = v;
     }
 }
 
 
-impl Register {
-    pub fn set8(&mut self, v: u8) {
-        self.value = vec![v];
+impl ByteContainer for RegisterPair {
+    type W = u16;
+    fn get(&self) -> Self::W {
+        self.high.borrow().get() as u16 | (self.low.borrow().get() as u16) << 8
     }
 
-    pub fn set16(&mut self, v: u16) {
-        let v1: u8 = (v & 0xff) as u8;
-        let v2: u8 = ((v >> 8) as u8) & 0xff;
-        self.value = vec![v1, v2];
+    fn set(&mut self, v: Self::W) {
+        let hb = (v & 0xff) as u8;
+        let lb = ((v & 0xff00) >> 8) as u8;
+        let mut high = self.high.borrow_mut();
+        high.value = hb;
+        let mut low = self.low.borrow_mut();
+        low.value = lb;
     }
 }
 
 #[cfg(test)]
 mod test {
+    use super::ByteContainer;
     use super::Register;
-    use super::Get;
-    fn test_default() {
-        let r = Register::default();
-        let _u8: u8 = r.get();
-        let _u16: u16 = r.get();
-        assert_eq!(_u8, 0u8);
-        assert_eq!(_u16, 0u16);
+    use super::RegisterPair;
+    use super::RegisterRef;
+    use std::rc::Rc;
+    use std::cell::RefCell;
+
+    #[test]
+    fn test_register() {
+        let mut r: Register<u8> = Register::default();
+        assert_eq!(r.get(), 0);
+        r.set(42);
+        assert_eq!(r.get(), 42);
+
+        let mut r16: Register<u16> = Register::new(1989);
+        assert_eq!(r16.get(), 1989);
+        r16.set(65535);
+        assert_eq!(r16.get(), 65535);
     }
 
-    fn test_get() {
-        let mut r = Register::default();
-        r.set16(1989);
-        let _u8: u8 = r.get();
-        let _u16: u16 = r.get();
-        assert_eq!(_u8, 197u8);
-        assert_eq!(_u16, 1989u16);
-    }
+    #[test]
+    fn test_register_pair() {
+        let r1: RegisterRef<u8> = Rc::new(RefCell::new(Register::new(197)));
+        let r2: RegisterRef<u8> = Rc::new(RefCell::new(Register::new(7)));
+        let mut rp = RegisterPair::new(r1.clone(), r2.clone());
+        assert_eq!(rp.get(), 1989);
+        rp.set(15623);
+        assert_eq!(rp.get(), 15623);
 
-    fn test_get_set() {
-        let mut r = Register::default();
-        r.set16(2000u16);
-        let _u16: u16 = r.get();
-        assert_eq!(_u16, 2000u16);
+        assert_eq!(r1.borrow().get(), 0x07);
+        assert_eq!(r2.borrow().get(), 0x3d);
     }
 }

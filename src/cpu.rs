@@ -1,21 +1,27 @@
-use register::{Register, Get};
+use register::Register;
+use register::ByteContainer;
+use register::RegisterClass;
+use register::RegisterPair;
+use register::RegisterRef;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 #[derive(Debug)]
 pub struct Cpu {
-    pub a: Register,
-    pub b: Register,
-    pub c: Register,
-    pub d: Register,
-    pub e: Register,
-    pub f: Register,
-    pub h: Register,
-    pub l: Register,
-    pub pc: Register,
-    pub sp: Register,
-    pub ix: Register,
-    pub iy: Register,
-    pub r: Register,
-    pub i: Register,
+    pub a: RegisterRef<u8>,
+    pub b: RegisterRef<u8>,
+    pub c: RegisterRef<u8>,
+    pub d: RegisterRef<u8>,
+    pub e: RegisterRef<u8>,
+    pub f: RegisterRef<u8>,
+    pub h: RegisterRef<u8>,
+    pub l: RegisterRef<u8>,
+    pub pc: RegisterRef<u16>,
+    pub sp: RegisterRef<u16>,
+    pub ix: RegisterRef<u16>,
+    pub iy: RegisterRef<u16>,
+    pub r: RegisterRef<u8>,
+    pub i: RegisterRef<u8>,
 }
 
 #[derive(Debug,PartialEq)]
@@ -42,91 +48,107 @@ pub enum Register16 {
 impl Cpu {
     pub fn new() -> Self {
         Cpu {
-            a: Register::default(),
-            b: Register::default(),
-            c: Register::default(),
-            d: Register::default(),
-            e: Register::default(),
-            f: Register::default(),
-            h: Register::default(),
-            l: Register::default(),
-            pc: Register::default(),
-            sp: Register::default(),
-            ix: Register::default(),
-            iy: Register::default(),
-            r: Register::default(),
-            i: Register::default(),
+            a: Rc::new(RefCell::new(Register::default())),
+            b: Rc::new(RefCell::new(Register::default())),
+            c: Rc::new(RefCell::new(Register::default())),
+            d: Rc::new(RefCell::new(Register::default())),
+            e: Rc::new(RefCell::new(Register::default())),
+            f: Rc::new(RefCell::new(Register::default())),
+            h: Rc::new(RefCell::new(Register::default())),
+            l: Rc::new(RefCell::new(Register::default())),
+            pc: Rc::new(RefCell::new(Register::default())),
+            sp: Rc::new(RefCell::new(Register::default())),
+            ix: Rc::new(RefCell::new(Register::default())),
+            iy: Rc::new(RefCell::new(Register::default())),
+            r: Rc::new(RefCell::new(Register::default())),
+            i: Rc::new(RefCell::new(Register::default())),
         }
     }
 
-    pub fn reg8(&self, which: Register8) -> Vec<&Register> {
+    pub fn reg8(&self, which: Register8) -> RegisterClass {
         match which {
-            Register8::B => vec![&self.b],
-            Register8::C => vec![&self.c],
-            Register8::D => vec![&self.d],
-            Register8::E => vec![&self.e],
-            Register8::H => vec![&self.h],
-            Register8::L => vec![&self.l],
-            Register8::HL => vec![&self.h, &self.l],
-            Register8::A => vec![&self.a],
+            Register8::B => RegisterClass::Single(self.b.clone()),
+            Register8::C => RegisterClass::Single(self.c.clone()),
+            Register8::D => RegisterClass::Single(self.d.clone()),
+            Register8::E => RegisterClass::Single(self.e.clone()),
+            Register8::H => RegisterClass::Single(self.h.clone()),
+            Register8::L => RegisterClass::Single(self.l.clone()),
+            Register8::HL => {
+                let pair = RegisterPair::new(self.h.clone(), self.l.clone());
+                RegisterClass::Pair(pair)
+            }
+            Register8::A => RegisterClass::Single(self.a.clone()),
         }
     }
 
-    pub fn reg8_mut(&mut self, which: Register8) -> Vec<&mut Register> {
+    pub fn reg16(&self, which: Register16) -> RegisterClass {
         match which {
-            Register8::B => vec![&mut self.b],
-            Register8::C => vec![&mut self.c],
-            Register8::D => vec![&mut self.d],
-            Register8::E => vec![&mut self.e],
-            Register8::H => vec![&mut self.h],
-            Register8::L => vec![&mut self.l],
-            Register8::HL => vec![&mut self.h, &mut self.l],
-            Register8::A => vec![&mut self.a],
-        }
-    }
+            Register16::BC => {
+                let pair = RegisterPair::new(self.b.clone(), self.c.clone());
+                RegisterClass::Pair(pair)
+            }
+            Register16::DE => {
+                let pair = RegisterPair::new(self.d.clone(), self.e.clone());
+                RegisterClass::Pair(pair)
+            }
+            Register16::HL => {
+                let pair = RegisterPair::new(self.h.clone(), self.l.clone());
+                RegisterClass::Pair(pair)
+            }
 
-    pub fn reg16(&self, which: Register16) -> Vec<&Register> {
-        match which {
-            Register16::BC => vec![&self.b, &self.c],
-            Register16::DE => vec![&self.d, &self.e],
-            Register16::HL => vec![&self.h, &self.l],
-            Register16::SP => vec![&self.sp],
-            Register16::AF => vec![&self.a, &self.f],
+            Register16::SP => RegisterClass::Double(self.sp.clone()),
+            Register16::AF => {
+                let pair = RegisterPair::new(self.a.clone(), self.f.clone());
+                RegisterClass::Pair(pair)
+            }
+
         }
     }
 
 
     pub fn set_pc(&mut self, counter: u16) {
-        self.pc.set16(counter);
+        let mut pc = self.pc.borrow_mut();
+        pc.set(counter);
     }
 
     pub fn incr(&mut self, bytes: usize) {
-        let cur: u16 = self.pc.get();
-        self.pc.set16(cur + (bytes as u16));
+        let cur: u16 = self.pc.borrow().get();
+        let mut pc = self.pc.borrow_mut();
+        pc.set(cur + (bytes as u16));
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::Cpu;
+    use super::{Register8, Register16};
+    use super::super::register::RegisterClass;
+    use super::super::register::ByteContainer;
+
+    #[test]
+    fn test_8bit_register() {
+        let cpu = Cpu::new();
+        let b = match cpu.reg8(Register8::B) {
+            RegisterClass::Single(r) => r,
+            _ => unreachable!(),
+        };
+        assert_eq!(b.borrow().get(), 0);
+        {
+            let mut bm = b.borrow_mut();
+            bm.set(100);
+        }
+        assert_eq!(b.borrow().get(), 100);
     }
 
-    pub fn set16(&mut self, n: u8, val: u16) {
-        // 0 BC
-        // 1 DE
-        // 2 HL
-        // 3 SP
-        match n {
-            0 => {
-                self.b.set16(val);
-                self.c.set16(val);
-            }
-            1 => {
-                self.d.set16(val);
-                self.e.set16(val);
-            }
-            2 => {
-                self.h.set16(val);
-                self.l.set16(val);
-            }
-            3 => {
-                self.sp.set16(val);
-            }
+    #[test]
+    fn test_16bit_register() {
+        let cpu = Cpu::new();
+        let mut b = match cpu.reg16(Register16::BC) {
+            RegisterClass::Pair(r) => r,
             _ => unreachable!(),
-        }
+        };
+        assert_eq!(b.get(), 0);
+        b.set(410);
+        assert_eq!(b.get(), 410);
     }
 }

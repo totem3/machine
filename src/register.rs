@@ -4,10 +4,11 @@ use std::cell::RefCell;
 pub enum RegisterClass {
     Single(RegisterRef<u8>),
     Double(RegisterRef<u16>),
-    Pair(RegisterPair),
+    Pair(RegisterPairRef),
 }
 
 pub type RegisterRef<T> = Rc<RefCell<Register<T>>>;
+pub type RegisterPairRef = Rc<RefCell<RegisterPair>>;
 
 pub struct RegisterPair {
     high: RegisterRef<u8>,

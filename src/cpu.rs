@@ -75,7 +75,7 @@ impl Cpu {
             Register8::L => RegisterClass::Single(self.l.clone()),
             Register8::HL => {
                 let pair = RegisterPair::new(self.h.clone(), self.l.clone());
-                RegisterClass::Pair(pair)
+                RegisterClass::Pair(Rc::new(RefCell::new(pair)))
             }
             Register8::A => RegisterClass::Single(self.a.clone()),
         }
@@ -85,26 +85,37 @@ impl Cpu {
         match which {
             Register16::BC => {
                 let pair = RegisterPair::new(self.b.clone(), self.c.clone());
-                RegisterClass::Pair(pair)
+                RegisterClass::Pair(Rc::new(RefCell::new(pair)))
             }
             Register16::DE => {
                 let pair = RegisterPair::new(self.d.clone(), self.e.clone());
-                RegisterClass::Pair(pair)
+                RegisterClass::Pair(Rc::new(RefCell::new(pair)))
             }
             Register16::HL => {
                 let pair = RegisterPair::new(self.h.clone(), self.l.clone());
-                RegisterClass::Pair(pair)
+                RegisterClass::Pair(Rc::new(RefCell::new(pair)))
             }
 
             Register16::SP => RegisterClass::Double(self.sp.clone()),
             Register16::AF => {
                 let pair = RegisterPair::new(self.a.clone(), self.f.clone());
-                RegisterClass::Pair(pair)
+                RegisterClass::Pair(Rc::new(RefCell::new(pair)))
             }
 
         }
     }
 
+    pub fn get_register_value<B>(reg: &Rc<RefCell<B>>) -> B::W
+        where B: ByteContainer
+    {
+        reg.borrow().get()
+    }
+
+    pub fn set_register_value<B>(reg: Rc<RefCell<B>>, v: B::W)
+        where B: ByteContainer
+    {
+        reg.borrow_mut().set(v)
+    }
 
     pub fn set_pc(&mut self, counter: u16) {
         let mut pc = self.pc.borrow_mut();
@@ -132,23 +143,34 @@ mod test {
             RegisterClass::Single(r) => r,
             _ => unreachable!(),
         };
-        assert_eq!(b.borrow().get(), 0);
-        {
-            let mut bm = b.borrow_mut();
-            bm.set(100);
-        }
-        assert_eq!(b.borrow().get(), 100);
+        assert_eq!(Cpu::get_register_value(&b), 0);
+        Cpu::set_register_value(b.clone(), 100);
+        assert_eq!(Cpu::get_register_value(&b), 100);
     }
 
     #[test]
     fn test_16bit_register() {
         let cpu = Cpu::new();
+        let mut b = match cpu.reg16(Register16::SP) {
+            RegisterClass::Double(r) => r,
+            _ => unreachable!(),
+        };
+        assert_eq!(Cpu::get_register_value(&b), 0);
+        Cpu::set_register_value(b.clone(), 65535);
+        assert_eq!(Cpu::get_register_value(&b), 65535);
+    }
+
+
+    #[test]
+    fn test_pair_register() {
+        let cpu = Cpu::new();
         let mut b = match cpu.reg16(Register16::BC) {
             RegisterClass::Pair(r) => r,
             _ => unreachable!(),
         };
-        assert_eq!(b.get(), 0);
-        b.set(410);
-        assert_eq!(b.get(), 410);
+        assert_eq!(Cpu::get_register_value(&b), 0);
+        Cpu::set_register_value(b.clone(), 410);
+        assert_eq!(Cpu::get_register_value(&b), 410);
     }
+
 }

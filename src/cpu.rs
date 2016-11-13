@@ -171,7 +171,7 @@ mod test {
     use super::Cpu;
     use super::{Register8, Register16};
     use super::super::register::RegisterClass;
-    use super::super::register::ByteContainer;
+    use super::super::ops::ByteContainer;
 
     #[test]
     fn test_8bit_register() {

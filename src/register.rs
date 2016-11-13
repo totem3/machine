@@ -81,7 +81,7 @@ impl ByteContainer for RegisterPair {
 
 #[cfg(test)]
 mod test {
-    use super::ByteContainer;
+    use super::super::ops::ByteContainer;
     use super::Register;
     use super::RegisterPair;
     use super::RegisterRef;

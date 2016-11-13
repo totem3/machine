@@ -52,3 +52,29 @@ impl Addressable<u16> for Memory {
         self.data[addr + 1] = v as u8;
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::Memory;
+    use super::super::ops::Addressable;
+    #[test]
+    fn test_get_set8() {
+        let mut m = Memory::new();
+        let r: u8 = m.get(20);
+        assert_eq!(r, 0u8);
+        m.set(20, 120u8);
+        let r: u8 = m.get(20);
+        assert_eq!(r, 120u8);
+    }
+
+    #[test]
+    fn test_get_set16() {
+        let mut m = Memory::new();
+        let addr: u16 = 40;
+        let r: u16 = m.get(addr);
+        assert_eq!(r, 0);
+        m.set(addr, 320u16);
+        let r: u16 = m.get(addr);
+        assert_eq!(r, 320)
+    }
+}

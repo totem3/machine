@@ -1,10 +1,13 @@
 use register::Register;
-use register::ByteContainer;
 use register::RegisterClass;
 use register::RegisterPair;
 use register::RegisterRef;
+use ops::ByteContainer;
+use ops::Addressable;
 use std::rc::Rc;
 use std::cell::RefCell;
+
+use memory::Memory;
 
 #[derive(Debug)]
 pub struct Cpu {
@@ -122,10 +125,44 @@ impl Cpu {
         pc.set(counter);
     }
 
-    pub fn incr(&mut self, bytes: usize) {
+    pub fn increment_pc(&mut self, bytes: usize) {
         let cur: u16 = self.pc.borrow().get();
         let mut pc = self.pc.borrow_mut();
         pc.set(cur + (bytes as u16));
+    }
+
+    pub fn load(&mut self, memory: &Memory, src: u16, dst: RegisterClass) {
+        match dst {
+            RegisterClass::Single(reg) => {
+                let value = memory.get(src);
+                Cpu::set_register_value(reg, value);
+            }
+            RegisterClass::Double(reg) => {
+                let value = memory.get(src);
+                Cpu::set_register_value(reg, value);
+            }
+            RegisterClass::Pair(reg) => {
+                let value = memory.get(src);
+                Cpu::set_register_value(reg, value);
+            }
+        }
+    }
+
+    pub fn store(&self, memory: &mut Memory, src: RegisterClass, dst: u16) {
+        match src {
+            RegisterClass::Single(reg) => {
+                let value = Cpu::get_register_value(&reg);
+                memory.set(dst, value);
+            }
+            RegisterClass::Double(reg) => {
+                let value = Cpu::get_register_value(&reg);
+                memory.set(dst, value);
+            }
+            RegisterClass::Pair(reg) => {
+                let value = Cpu::get_register_value(&reg);
+                memory.set(dst, value);
+            }
+        }
     }
 }
 

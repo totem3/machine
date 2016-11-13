@@ -1,5 +1,6 @@
 use std::rc::Rc;
 use std::cell::RefCell;
+use ops::ByteContainer;
 
 pub enum RegisterClass {
     Single(RegisterRef<u8>),
@@ -22,12 +23,6 @@ impl RegisterPair {
             low: low,
         }
     }
-}
-
-pub trait ByteContainer {
-    type W;
-    fn get(&self) -> Self::W;
-    fn set(&mut self, v: Self::W);
 }
 
 #[derive(Debug,Clone)]

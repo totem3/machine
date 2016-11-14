@@ -27,7 +27,7 @@ pub struct Cpu {
     pub i: RegisterRef<u8>,
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Clone)]
 pub enum Register8 {
     B,
     C,
@@ -39,13 +39,15 @@ pub enum Register8 {
     A,
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Clone)]
 pub enum Register16 {
     BC,
     DE,
     HL,
     SP,
     AF,
+    IX,
+    IY,
 }
 
 impl Cpu {
@@ -68,42 +70,44 @@ impl Cpu {
         }
     }
 
-    pub fn reg8(&self, which: Register8) -> RegisterClass {
+    pub fn reg8(&self, which: &Register8) -> RegisterClass {
         match which {
-            Register8::B => RegisterClass::Single(self.b.clone()),
-            Register8::C => RegisterClass::Single(self.c.clone()),
-            Register8::D => RegisterClass::Single(self.d.clone()),
-            Register8::E => RegisterClass::Single(self.e.clone()),
-            Register8::H => RegisterClass::Single(self.h.clone()),
-            Register8::L => RegisterClass::Single(self.l.clone()),
-            Register8::HL => {
+            &Register8::B => RegisterClass::Single(self.b.clone()),
+            &Register8::C => RegisterClass::Single(self.c.clone()),
+            &Register8::D => RegisterClass::Single(self.d.clone()),
+            &Register8::E => RegisterClass::Single(self.e.clone()),
+            &Register8::H => RegisterClass::Single(self.h.clone()),
+            &Register8::L => RegisterClass::Single(self.l.clone()),
+            &Register8::HL => {
                 let pair = RegisterPair::new(self.h.clone(), self.l.clone());
                 RegisterClass::Pair(Rc::new(RefCell::new(pair)))
             }
-            Register8::A => RegisterClass::Single(self.a.clone()),
+            &Register8::A => RegisterClass::Single(self.a.clone()),
         }
     }
 
-    pub fn reg16(&self, which: Register16) -> RegisterClass {
+    pub fn reg16(&self, which: &Register16) -> RegisterClass {
         match which {
-            Register16::BC => {
+            &Register16::BC => {
                 let pair = RegisterPair::new(self.b.clone(), self.c.clone());
                 RegisterClass::Pair(Rc::new(RefCell::new(pair)))
             }
-            Register16::DE => {
+            &Register16::DE => {
                 let pair = RegisterPair::new(self.d.clone(), self.e.clone());
                 RegisterClass::Pair(Rc::new(RefCell::new(pair)))
             }
-            Register16::HL => {
+            &Register16::HL => {
                 let pair = RegisterPair::new(self.h.clone(), self.l.clone());
                 RegisterClass::Pair(Rc::new(RefCell::new(pair)))
             }
 
-            Register16::SP => RegisterClass::Double(self.sp.clone()),
-            Register16::AF => {
+            &Register16::SP => RegisterClass::Double(self.sp.clone()),
+            &Register16::AF => {
                 let pair = RegisterPair::new(self.a.clone(), self.f.clone());
                 RegisterClass::Pair(Rc::new(RefCell::new(pair)))
             }
+            &Register16::IX => RegisterClass::Double(self.ix.clone()),
+            &Register16::IY => RegisterClass::Double(self.iy.clone()),
 
         }
     }
